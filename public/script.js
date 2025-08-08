@@ -1,30 +1,19 @@
+// public/script.js
 let ws = null;
 let currentRoom = null;
 
+/* ---------- Connection ---------- */
 function connect() {
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+
   ws = new WebSocket(getWsUrl());
+
   ws.addEventListener("open", () => {
-    // noop
+    // Connected
   });
-  ws.addEventListener("message", (ev) => {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === "code") {
-        // got a server-generated room code
-        document.getElementById("room-input").value = msg.code;
-      } else if (msg.type === "joined") {
-        onJoined(msg.room);
-      } else if (msg.type === "peer-joined") {
-        setStatus("A friend joined.");
-      } else if (msg.type === "peer-left") {
-        setStatus("Your friend left.");
-      } else if (msg.type === "message") {
-        appendMessage("(friend): " + msg.text);
-      } else if (msg.type === "error") {
-        setStatus("Error: " + (msg.error || "unknown"));
-      }
-    } catch {}
-  });
+
+  ws.addEventListener("message", onMessage);
+
   ws.addEventListener("close", () => {
     setStatus("Connection closed.");
   });
@@ -35,6 +24,55 @@ function getWsUrl() {
   return `${proto}://${location.host}`;
 }
 
+/* Wait for socket to open before sending */
+function whenSocketOpen(cb) {
+  connect();
+  if (ws.readyState === WebSocket.OPEN) return cb();
+  const onOpen = () => {
+    ws.removeEventListener("open", onOpen);
+    cb();
+  };
+  ws.addEventListener("open", onOpen);
+}
+
+/* ---------- Messaging ---------- */
+function onMessage(ev) {
+  let msg;
+  try {
+    msg = JSON.parse(ev.data);
+  } catch {
+    return;
+  }
+
+  switch (msg.type) {
+    case "code":
+      // Server-generated room code
+      document.getElementById("room-input").value = msg.code;
+      break;
+
+    case "joined":
+      onJoined(msg.room);
+      break;
+
+    case "peer-joined":
+      setStatus("A friend joined.");
+      break;
+
+    case "peer-left":
+      setStatus("Your friend left.");
+      break;
+
+    case "message":
+      appendMessage("(friend): " + msg.text);
+      break;
+
+    case "error":
+      setStatus("Error: " + (msg.error || "unknown"));
+      break;
+  }
+}
+
+/* ---------- UI helpers ---------- */
 function setStatus(t) {
   document.getElementById("status").textContent = t;
 }
@@ -42,8 +80,9 @@ function setStatus(t) {
 function appendMessage(text) {
   const el = document.createElement("div");
   el.textContent = text;
-  document.getElementById("messages").appendChild(el);
-  document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+  const box = document.getElementById("messages");
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
 }
 
 function showRoomUI(show) {
@@ -58,36 +97,45 @@ function onJoined(room) {
   showRoomUI(true);
 }
 
+/* ---------- Actions ---------- */
 function requestCode() {
-  ws.send(JSON.stringify({ type: "generateCode" }));
+  whenSocketOpen(() => {
+    ws.send(JSON.stringify({ type: "generateCode" }));
+  });
 }
 
 function joinWithInput() {
   const code = document.getElementById("room-input").value.trim();
-  if (!code) {
-    setStatus("Enter a room code.");
-    return;
-  }
-  ws.send(JSON.stringify({ type: "join", room: code }));
+  if (!code) return setStatus("Enter a room code.");
+  setStatus("Joining…");
+  whenSocketOpen(() => {
+    ws.send(JSON.stringify({ type: "join", room: code }));
+  });
 }
 
 function createRoom() {
+  // Ask server for a secure code, then join it
   requestCode();
   setTimeout(() => {
     const code = document.getElementById("room-input").value.trim();
     if (code) {
-      ws.send(JSON.stringify({ type: "join", room: code }));
+      whenSocketOpen(() => {
+        ws.send(JSON.stringify({ type: "join", room: code }));
+      });
     }
-  }, 50);
+  }, 80);
 }
 
 function sendMessage() {
   const box = document.getElementById("msg");
   const text = box.value.trim();
-  if (!text || !ws) return;
-  ws.send(JSON.stringify({ type: "message", text }));
-  appendMessage("(you): " + text);
-  box.value = "";
+  if (!text) return;
+
+  whenSocketOpen(() => {
+    ws.send(JSON.stringify({ type: "message", text }));
+    appendMessage("(you): " + text);
+    box.value = "";
+  });
 }
 
 function copyInvite() {
@@ -97,22 +145,26 @@ function copyInvite() {
 }
 
 function leaveRoom() {
-  // Closing the tab or socket will remove us; we just refresh to teardown
+  // Easiest teardown: reload to reset state and close socket
   location.href = location.origin;
 }
 
+/* ---------- Init ---------- */
 window.addEventListener("load", () => {
   connect();
+
   document.getElementById("new-room").addEventListener("click", createRoom);
   document.getElementById("join-room").addEventListener("click", joinWithInput);
+
   document.getElementById("send").addEventListener("click", sendMessage);
   document.getElementById("msg").addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendMessage();
   });
+
   document.getElementById("copy-link").addEventListener("click", copyInvite);
   document.getElementById("leave").addEventListener("click", leaveRoom);
 
-  // Support ?room= prefill
+  // Support ?room= prefill for invite links
   const params = new URLSearchParams(location.search);
   const room = params.get("room");
   if (room) {
