@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ephemeral Chat</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">💬</div>
+        <div class="title">Ephemeral Chat</div>
+      </div>
+      <div class="top-actions">
+        <a class="gh" href="#" target="_blank" rel="noopener">About</a>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Setup view -->
+      <section id="setup" class="card">
+        <h1 class="headline">Start a quick private chat</h1>
+        <p class="sub">Share a one-time code with a friend. Messages are not stored and rooms disappear when both leave.</p>
+
+        <div class="actions">
+          <button id="new-room" type="button" class="btn primary">Create room</button>
+          <div class="join-wrap">
+            <input id="room-input" class="input" placeholder="Enter room code" maxlength="64" />
+            <button id="join-room" type="button" class="btn">Join</button>
+          </div>
+          <p class="hint">Tip: You can paste a code or open an invite link to prefill the field.</p>
+        </div>
+      </section>
+
+      <!-- Room view -->
+      <section id="room" class="card hidden">
+        <div class="room-header">
+          <div class="room-meta">
+            <span id="room-code" class="room-pill"></span>
+            <button id="copy-link" type="button" class="btn small">Copy invite</button>
+          </div>
+          <button id="leave" type="button" class="btn danger small">Leave</button>
+        </div>
+
+        <div id="messages" class="messages" aria-live="polite"></div>
+
+        <div class="composer">
+          <input id="msg" class="input" placeholder="Type a message…" maxlength="500" />
+          <button id="send" type="button" class="btn primary">Send</button>
+        </div>
+
+        <div class="status-row">
+          <span id="status" class="status"></span>
+          <span id="countdown" class="countdown hidden" aria-live="polite"></span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">Made for quick chats — rooms auto-destroy when empty.</footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

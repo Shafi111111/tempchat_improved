@@ -1,0 +1,17 @@
+{
+  "name": "ephemeral-chat-plus",
+  "version": "2.0.0",
+  "description": "Ephemeral two-person chat with a clean responsive UI. No database; rooms vanish when users leave.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  }
+}
